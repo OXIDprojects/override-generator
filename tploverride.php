@@ -2,7 +2,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
  <head>
   <title>Template Override generieren</title>
-  <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.1.0/css/bootstrap-combined.min.css">
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+
   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
  </head>
 <?php
@@ -11,7 +16,7 @@
         if( is_null($dir) || $dir === "" ){
             return FALSE;
         }
-        
+
         if( is_dir($dir) || $dir === "/" ){
             return TRUE;
         }
@@ -20,18 +25,18 @@
         }
         return FALSE;
     }
-    
+
     function smartCopy($source, $dest, $options=array('folderPermission'=>0755,'filePermission'=>0755))
     {
         $result=false;
-        
+
         //For Cross Platform Compatibility
         if (!isset($options['noTheFirstRun'])) {
             $source=str_replace('\\','/',$source);
             $dest=str_replace('\\','/',$dest);
             $options['noTheFirstRun']=true;
         }
-        
+
         if (is_file($source)) {
             if ($dest[strlen($dest)-1]=='/') {
                 if (!file_exists($dest)) {
@@ -66,7 +71,7 @@
                     chmod($dest,$options['filePermission']);
                 }
             }
-    
+
             $dirHandle=opendir($source);
             while($file=readdir($dirHandle))
             {
@@ -81,7 +86,7 @@
                 }
             }
             closedir($dirHandle);
-            
+
         } else {
             $result=false;
         }
@@ -89,10 +94,10 @@
     }
 
     function compareDirectories( $path = '.', $changePath = '.', $level = 0 ){
-        
+
         $ignore = array( 'cgi-bin', '.', '..' );
         $dh = @opendir( $path );
-        
+
         while( false !== ( $file = readdir( $dh ) ) ){ // Loop through the directory
             if( !in_array( $file, $ignore ) ){
                 if( is_dir( "$path/$file" ) ){
@@ -103,114 +108,114 @@
                 }//elseif
             }//if in array
         }//while
-        
+
         closedir( $dh );
-        
+
     }
-    
+
     function compareFiles( $path = '.', $changePath = '.' ){
         $vanilla_path = $path;
         $branch_path = $changePath;
-        
-        if( !file_exists($branch_path) || strcmp(file_get_contents($vanilla_path),file_get_contents($branch_path)) ){
+
+        if( !file_exists($branch_path) || md5(file_get_contents($vanilla_path)) !== md5(file_get_contents($branch_path)) ){
+
+            $tPath = str_replace($_REQUEST['modifiedtpl']."/",$_REQUEST['targetfolder'].'/',$vanilla_path);
+
             if($_REQUEST["displayonly"] == 1){
-                echo "$vanilla_path >> $branch_path<br/>";
+                echo "$vanilla_path >> $branch_path >> $tPath" . PHP_EOL;
             }else{
-                $tPath = str_replace($_REQUEST['modifiedtpl']."/",'',$vanilla_path);
-            
-                makeAll(dirname("out/".$_REQUEST['targetfolder']."/$tPath"));
-                smartCopy($vanilla_path, "out/".$_REQUEST['targetfolder']."/$tPath");
+                makeAll(dirname($tPath));
+                smartCopy($vanilla_path, $tPath);
             }
-        }    
+        }
         return true;
     }
-    
-    
 
-    
+
     $aTemplates = array();
-    foreach ( glob("out/**",GLOB_ONLYDIR) as $tplfolder ) {
+    foreach ( glob("application/views/**",GLOB_ONLYDIR) as $tplfolder ) {
         if(file_exists($tplfolder."/theme.php")){
-            $aTemplates[] = $tplfolder;
+            $aTemplates[] = basename($tplfolder);
         }
     }
-    
+
     if($_REQUEST['fnc'] == 'create'){
-        
-        compareDirectories( $_REQUEST['modifiedtpl'], $_REQUEST['originaltpl']);
-        
+
+        $modified = $_REQUEST['modifiedtpl'];
+        $original = $_REQUEST['originaltpl'];
+
+        if($_REQUEST["displayonly"] == 1)
+          echo '<pre>';
+
+        compareDirectories( 'application/views/'.$modified, 'application/views/'.$original);
+        compareDirectories( 'out/'.$modified, 'out/'.$original);
+
+        if($_REQUEST["displayonly"] == 1)
+          echo '</pre>';
+
+
         $blCopied = true;
-        
+
     }
-    
+
 ?>
- 
+
 <body style="padding-top: 60px">
 
- <div class="topbar-wrapper noprint" style="z-index: 5">
-  <div class="topbar">
-     <div class="fill">
-         <div class="container">
-             <h3><a href="#">Aggrosoft Override Generator</a></h3>
-         </div>
-     </div>
- </div>
- </div>
+  <nav class="navbar navbar-inverse navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <a class="navbar-brand" href="http://www.aggrosoft.de">Aggrosoft Override Generator</a>
+      </div>
+    </div>
+  </nav>
 
 <div class="container">
-
+<?php if($blCopied) :?>
         <div class="alert-message success">
         <p><strong>Kopiervorgang erfolgreich!</strong> Sie finden das neue Template jetzt im Ziel Ordner.</p>
         </div>
-
+<?php endif; ?>
   <form action="tploverride.php" method="post">
-      <input type="hidden" name="fnc" value="create">
-    <fieldset>
-      <legend>Custom Theme generieren</legend>
-      <div class="clearfix">
-        <label for="username">Ge&auml;ndertes Template</label>
-        <div class="input">
-          <select name="modifiedtpl">
-              <?php foreach ($aTemplates as $sTemplate) : ?>
-              <option value="<?php echo $sTemplate; ?>"><?php echo $sTemplate; ?></option>
-              <?php endforeach; ?>
-          </select>
-        </div>
-      </div><!-- /clearfix -->
-      <div class="clearfix">
-        <label for="username">Original Template</label>
-        <div class="input">
-          <select name="originaltpl">
-              <?php foreach ($aTemplates as $sTemplate) : ?>
-              <option value="<?php echo $sTemplate; ?>"><?php echo $sTemplate; ?></option>
-              <?php endforeach; ?>
-          </select>
-        </div>
-      </div><!-- /clearfix -->
-      <div class="clearfix">
-        <label for="username">Ziel Ordner (in out)</label>
-        <div class="input">
-          <input type="text" size="30" name="targetfolder" class="xlarge">
-        </div>
-      </div><!-- /clearfix -->
-      <div class="clearfix">
-        <label for="username">Simulieren</label>
-        <div class="input">
-            <div class="input-prepend">
-                  <label class="add-on"><input type="checkbox" name="displayonly" value="1"></label>
-                  <input class="small" readonly="readonly" value="Nur anzeigen" type="text">
-              </div>
-        </div>
-      </div><!-- /clearfix -->            
-      <div class="actions">
-        <button class="btn primary" type="submit">Start</button>&nbsp;<button class="btn" type="reset">Cancel</button>
-      </div>
-    </fieldset>
+    <input type="hidden" name="fnc" value="create">
+
+    <div class="form-group">
+      <label for="modifiedtpl">Ge&auml;ndertes Template</label>
+      <select class="form-control" id="modifiedtpl" name="modifiedtpl">
+          <?php foreach ($aTemplates as $sTemplate) : ?>
+          <option value="<?php echo $sTemplate; ?>"><?php echo $sTemplate; ?></option>
+          <?php endforeach; ?>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="originaltpl">Original Template</label>
+      <select class="form-control" id="originaltpl" name="originaltpl">
+          <?php foreach ($aTemplates as $sTemplate) : ?>
+          <option value="<?php echo $sTemplate; ?>"><?php echo $sTemplate; ?></option>
+          <?php endforeach; ?>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="targetfolder">Ziel Ordner</label>
+      <input type="text" class="form-control" id="targetfolder" name="targetfolder">
+    </div>
+
+    <div class="form-group">
+      <input type="checkbox" value="1" id="displayonly" name="displayonly">
+      <label class="control-label" for="displayonly">Simulieren</label>
+    </div>
+
+    <div class="form-group">
+      <button type="submit" class="btn btn-default">Start</button>
+    </div>
+
   </form>
 
     </div>
   <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
-  <script type="text/javascript" src="http://autobahn.tablesorter.com/jquery.tablesorter.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.22.3/js/jquery.tablesorter.min.js"></script>
   <script type="text/javascript">
       $(function(){
           $("table").tablesorter({ sortList: [[1,1]] });
